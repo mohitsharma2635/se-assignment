@@ -1,19 +1,69 @@
 import React, { useState } from "react";
 import ReactSelect from "react-select";
+import {
+    assignUserToPlanProcedure,
+    removeAllUsersFromPlanProcedure,
+    removeUserFromPlanProcedure,
+} from "../../../api/api";
 
-const PlanProcedureItem = ({ procedure, users }) => {
-    const [selectedUsers, setSelectedUsers] = useState(null);
+const PlanProcedureItem = ({ planId, procedure, users, assignedUsers }) => {
+    const [selectedUsers, setSelectedUsers] = useState(assignedUsers ?? []);
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState(null);
 
-    const handleAssignUserToProcedure = (e) => {
-        setSelectedUsers(e);
-        // TODO: Remove console.log and add missing logic
-        console.log(e);
+    const saveChange = async (apiCall, newSelectedUsers) => {
+        setIsSaving(true);
+        setError(null);
+        try {
+            await apiCall();
+            setSelectedUsers(newSelectedUsers);
+        } catch (e) {
+            setError(e.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleRemoveAllUsers = () =>
+        saveChange(
+            () => removeAllUsersFromPlanProcedure(planId, procedure.procedureId),
+            []
+        );
+
+    const handleUserSelectionChange = (newValue, actionMeta) => {
+        switch (actionMeta.action) {
+            case "select-option":
+                return saveChange(
+                    () => assignUserToPlanProcedure(planId, procedure.procedureId, actionMeta.option.value),
+                    newValue
+                );
+            case "remove-value":
+            case "pop-value":
+                return saveChange(
+                    () => removeUserFromPlanProcedure(planId, procedure.procedureId, actionMeta.removedValue.value),
+                    newValue
+                );
+            case "clear":
+                return handleRemoveAllUsers();
+            default:
+                return;
+        }
     };
 
     return (
         <div className="py-2">
-            <div>
-                {procedure.procedureTitle}
+            <div className="d-flex justify-content-between align-items-center">
+                <span>{procedure.procedureTitle}</span>
+                {selectedUsers.length > 0 && (
+                    <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        disabled={isSaving}
+                        onClick={handleRemoveAllUsers}
+                    >
+                        Remove all users
+                    </button>
+                )}
             </div>
 
             <ReactSelect
@@ -22,8 +72,12 @@ const PlanProcedureItem = ({ procedure, users }) => {
                 isMulti={true}
                 options={users}
                 value={selectedUsers}
-                onChange={(e) => handleAssignUserToProcedure(e)}
+                isLoading={isSaving}
+                isDisabled={isSaving}
+                onChange={handleUserSelectionChange}
             />
+
+            {error && <div className="text-danger small mt-1">{error}</div>}
         </div>
     );
 };

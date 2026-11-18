@@ -82,8 +82,13 @@ const Plan = () => {
                       {planProcedures.map((p) => (
                         <PlanProcedureItem
                           key={p.procedure.procedureId}
+                          planId={id}
                           procedure={p.procedure}
                           users={users}
+                          assignedUsers={(p.planProcedureUsers ?? []).map((ppu) => ({
+                            label: ppu.user.name,
+                            value: ppu.userId,
+                          }))}
                         />
                       ))}
                     </div>
